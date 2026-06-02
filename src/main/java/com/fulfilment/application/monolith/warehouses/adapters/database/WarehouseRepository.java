@@ -5,17 +5,25 @@ import com.fulfilment.application.monolith.warehouses.domain.ports.WarehouseStor
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class WarehouseRepository implements WarehouseStore, PanacheRepository<DbWarehouse> {
 
+  private static final Logger LOG = Logger.getLogger(WarehouseRepository.class);
+
   @Override
   public List<Warehouse> getAll() {
-    return this.listAll().stream().map(DbWarehouse::toWarehouse).toList();
+    LOG.debug("Fetching all warehouses");
+    List<Warehouse> result = this.listAll().stream().map(DbWarehouse::toWarehouse).toList();
+    LOG.debugf("Found %d warehouse(s)", result.size());
+    return result;
   }
 
   @Override
   public void create(Warehouse warehouse) {
+    LOG.infof("Creating warehouse with businessUnitCode='%s', location='%s', capacity=%d",
+        warehouse.businessUnitCode, warehouse.location, warehouse.capacity);
     DbWarehouse dbWarehouse = new DbWarehouse();
     dbWarehouse.businessUnitCode = warehouse.businessUnitCode;
     dbWarehouse.location = warehouse.location;
@@ -23,12 +31,14 @@ public class WarehouseRepository implements WarehouseStore, PanacheRepository<Db
     dbWarehouse.stock = warehouse.stock;
     dbWarehouse.createdAt = warehouse.createdAt;
     dbWarehouse.archivedAt = warehouse.archivedAt;
-    
+
     this.persist(dbWarehouse);
+    LOG.infof("Warehouse '%s' persisted successfully", warehouse.businessUnitCode);
   }
 
   @Override
   public void update(Warehouse warehouse) {
+    LOG.infof("Updating warehouse '%s'", warehouse.businessUnitCode);
     DbWarehouse dbWarehouse = find("businessUnitCode", warehouse.businessUnitCode).firstResult();
     if (dbWarehouse != null) {
       dbWarehouse.location = warehouse.location;
@@ -36,18 +46,31 @@ public class WarehouseRepository implements WarehouseStore, PanacheRepository<Db
       dbWarehouse.stock = warehouse.stock;
       dbWarehouse.archivedAt = warehouse.archivedAt;
       getEntityManager().flush();
+      LOG.infof("Warehouse '%s' updated successfully", warehouse.businessUnitCode);
+    } else {
+      LOG.warnf("Update skipped — warehouse '%s' not found in database", warehouse.businessUnitCode);
     }
   }
 
   @Override
   public void remove(Warehouse warehouse) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'remove'");
+    LOG.infof("Removing warehouse '%s'", warehouse.businessUnitCode);
+    DbWarehouse dbWarehouse = find("businessUnitCode", warehouse.businessUnitCode).firstResult();
+    if (dbWarehouse != null) {
+      delete(dbWarehouse);
+      LOG.infof("Warehouse '%s' removed successfully", warehouse.businessUnitCode);
+    } else {
+      LOG.warnf("Remove skipped — warehouse '%s' not found in database", warehouse.businessUnitCode);
+    }
   }
 
   @Override
   public Warehouse findByBusinessUnitCode(String buCode) {
+    LOG.debugf("Looking up warehouse by businessUnitCode='%s'", buCode);
     DbWarehouse dbWarehouse = find("businessUnitCode", buCode).firstResult();
+    if (dbWarehouse == null) {
+      LOG.debugf("No warehouse found for businessUnitCode='%s'", buCode);
+    }
     return dbWarehouse != null ? dbWarehouse.toWarehouse() : null;
   }
 
@@ -55,6 +78,8 @@ public class WarehouseRepository implements WarehouseStore, PanacheRepository<Db
   @Override
   public List<Warehouse> search(String location, Integer minCapacity, Integer maxCapacity,
                                 String sortBy, String sortOrder, int page, int pageSize) {
+    LOG.debugf("Searching warehouses — location='%s', minCapacity=%s, maxCapacity=%s, sortBy='%s', sortOrder='%s', page=%d, pageSize=%d",
+        location, minCapacity, maxCapacity, sortBy, sortOrder, page, pageSize);
     StringBuilder jpql = new StringBuilder(
         "SELECT w FROM DbWarehouse w WHERE w.archivedAt IS NULL");
     if (location != null && !location.isBlank()) {
@@ -84,11 +109,15 @@ public class WarehouseRepository implements WarehouseStore, PanacheRepository<Db
     int safePage = Math.max(page, 0);
     query.setFirstResult(safePage * safeSize);
     query.setMaxResults(safeSize);
-    return query.getResultList().stream().map(DbWarehouse::toWarehouse).toList();
+    List<Warehouse> results = query.getResultList().stream().map(DbWarehouse::toWarehouse).toList();
+    LOG.debugf("Search returned %d result(s)", results.size());
+    return results;
   }
 
   @Override
   public long countSearch(String location, Integer minCapacity, Integer maxCapacity) {
+    LOG.debugf("Counting warehouses — location='%s', minCapacity=%s, maxCapacity=%s",
+        location, minCapacity, maxCapacity);
     StringBuilder jpql = new StringBuilder(
         "SELECT COUNT(w) FROM DbWarehouse w WHERE w.archivedAt IS NULL");
     if (location != null && !location.isBlank()) {
@@ -110,6 +139,8 @@ public class WarehouseRepository implements WarehouseStore, PanacheRepository<Db
     if (maxCapacity != null) {
       query.setParameter("maxCapacity", maxCapacity);
     }
-    return query.getSingleResult();
+    long count = query.getSingleResult();
+    LOG.debugf("Count result: %d", count);
+    return count;
   }
 }

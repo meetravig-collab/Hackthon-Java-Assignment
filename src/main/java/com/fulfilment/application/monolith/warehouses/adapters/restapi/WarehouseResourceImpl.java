@@ -14,9 +14,12 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.WebApplicationException;
 import java.math.BigInteger;
 import java.util.List;
+import org.jboss.logging.Logger;
 
 @RequestScoped
 public class WarehouseResourceImpl implements WarehouseResource {
+
+  private static final Logger LOG = Logger.getLogger(WarehouseResourceImpl.class);
 
   @Inject
   private WarehouseRepository warehouseRepository;
@@ -29,12 +32,16 @@ public class WarehouseResourceImpl implements WarehouseResource {
 
   @Override
   public List<Warehouse> listAllWarehousesUnits() {
-    return warehouseRepository.getAll().stream().map(this::toWarehouseResponse).toList();
+    LOG.debug("GET /warehouse — listing all warehouses");
+    List<Warehouse> result = warehouseRepository.getAll().stream().map(this::toWarehouseResponse).toList();
+    LOG.debugf("Returning %d warehouse(s)", result.size());
+    return result;
   }
 
   @Override
   @Transactional
   public Warehouse createANewWarehouseUnit(@NotNull Warehouse data) {
+    LOG.infof("POST /warehouse — creating warehouse '%s'", data.getBusinessUnitCode());
     var domainWarehouse = new com.fulfilment.application.monolith.warehouses.domain.models.Warehouse();
     domainWarehouse.businessUnitCode = data.getBusinessUnitCode();
     domainWarehouse.location = data.getLocation();
@@ -43,16 +50,20 @@ public class WarehouseResourceImpl implements WarehouseResource {
 
     try {
       createWarehouseOperation.create(domainWarehouse);
+      LOG.infof("Warehouse '%s' created via REST", data.getBusinessUnitCode());
       return toWarehouseResponse(domainWarehouse);
     } catch (IllegalArgumentException e) {
+      LOG.warnf("Create warehouse '%s' rejected: %s", data.getBusinessUnitCode(), e.getMessage());
       throw new WebApplicationException(e.getMessage(), 400);
     }
   }
 
   @Override
   public Warehouse getAWarehouseUnitByID(String id) {
+    LOG.debugf("GET /warehouse/%s", id);
     var domainWarehouse = warehouseRepository.findByBusinessUnitCode(id);
     if (domainWarehouse == null) {
+      LOG.warnf("GET /warehouse/%s — not found", id);
       throw new WebApplicationException("Warehouse with business unit code '" + id + "' not found", 404);
     }
     return toWarehouseResponse(domainWarehouse);
@@ -61,21 +72,25 @@ public class WarehouseResourceImpl implements WarehouseResource {
   @Override
   @Transactional
   public void archiveAWarehouseUnitByID(String id) {
+    LOG.infof("DELETE /warehouse/%s — archiving warehouse", id);
     var domainWarehouse = warehouseRepository.findByBusinessUnitCode(id);
     if (domainWarehouse == null) {
+      LOG.warnf("Archive warehouse '%s' — not found", id);
       throw new WebApplicationException("Warehouse with business unit code '" + id + "' not found", 404);
     }
     try {
       archiveWarehouseOperation.archive(domainWarehouse);
+      LOG.infof("Warehouse '%s' archived via REST", id);
     } catch (IllegalArgumentException e) {
+      LOG.warnf("Archive warehouse '%s' rejected: %s", id, e.getMessage());
       throw new WebApplicationException(e.getMessage(), 400);
     }
   }
 
   @Override
   @Transactional
-  public Warehouse replaceTheCurrentActiveWarehouse(
-          String businessUnitCode, @NotNull Warehouse data) {
+  public Warehouse replaceTheCurrentActiveWarehouse(String businessUnitCode, @NotNull Warehouse data) {
+    LOG.infof("POST /warehouse/%s/replacement — replacing warehouse", businessUnitCode);
     var domainWarehouse = new com.fulfilment.application.monolith.warehouses.domain.models.Warehouse();
     domainWarehouse.businessUnitCode = businessUnitCode;
     domainWarehouse.location = data.getLocation();
@@ -85,8 +100,10 @@ public class WarehouseResourceImpl implements WarehouseResource {
     try {
       replaceWarehouseOperation.replace(domainWarehouse);
       var updated = warehouseRepository.findByBusinessUnitCode(businessUnitCode);
+      LOG.infof("Warehouse '%s' replaced via REST", businessUnitCode);
       return toWarehouseResponse(updated);
     } catch (IllegalArgumentException e) {
+      LOG.warnf("Replace warehouse '%s' rejected: %s", businessUnitCode, e.getMessage());
       throw new WebApplicationException(e.getMessage(), 400);
     }
   }
@@ -94,6 +111,9 @@ public class WarehouseResourceImpl implements WarehouseResource {
   @Override
   public WarehouseSearchResult searchWarehouses(String location, BigInteger minCapacity,
       BigInteger maxCapacity, String sortBy, String sortOrder, BigInteger page, BigInteger pageSize) {
+
+    LOG.debugf("GET /warehouse/search — location='%s', minCapacity=%s, maxCapacity=%s, sortBy='%s', sortOrder='%s', page=%s, pageSize=%s",
+        location, minCapacity, maxCapacity, sortBy, sortOrder, page, pageSize);
 
     Integer min = minCapacity != null ? minCapacity.intValue() : null;
     Integer max = maxCapacity != null ? maxCapacity.intValue() : null;
@@ -108,6 +128,7 @@ public class WarehouseResourceImpl implements WarehouseResource {
     result.setTotal(total);
     result.setPage(pg);
     result.setPageSize(size);
+    LOG.debugf("Search returned %d item(s) out of %d total", items.size(), total);
     return result;
   }
 
