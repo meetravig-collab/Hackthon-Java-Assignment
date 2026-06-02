@@ -29,19 +29,14 @@ public class WarehouseRepository implements WarehouseStore, PanacheRepository<Db
 
   @Override
   public void update(Warehouse warehouse) {
-    getEntityManager().createQuery(
-      "UPDATE DbWarehouse w SET w.location = :loc, w.capacity = :cap, " +
-      "w.stock = :stock, w.archivedAt = :archived WHERE w.businessUnitCode = :code")
-      .setParameter("loc", warehouse.location)
-      .setParameter("cap", warehouse.capacity)
-      .setParameter("stock", warehouse.stock)
-      .setParameter("archived", warehouse.archivedAt)
-      .setParameter("code", warehouse.businessUnitCode)
-      .executeUpdate();
-
-    // Clear persistence context to see updates in subsequent queries
-    getEntityManager().flush();
-    getEntityManager().clear();
+    DbWarehouse dbWarehouse = find("businessUnitCode", warehouse.businessUnitCode).firstResult();
+    if (dbWarehouse != null) {
+      dbWarehouse.location = warehouse.location;
+      dbWarehouse.capacity = warehouse.capacity;
+      dbWarehouse.stock = warehouse.stock;
+      dbWarehouse.archivedAt = warehouse.archivedAt;
+      getEntityManager().flush();
+    }
   }
 
   @Override
@@ -58,9 +53,63 @@ public class WarehouseRepository implements WarehouseStore, PanacheRepository<Db
 
 
   @Override
-  public Warehouse searchWareHouse(String type, String description) {
-    DbWarehouse dbWarehouse = find("type", description).firstResult();
+  public List<Warehouse> search(String location, Integer minCapacity, Integer maxCapacity,
+                                String sortBy, String sortOrder, int page, int pageSize) {
+    StringBuilder jpql = new StringBuilder(
+        "SELECT w FROM DbWarehouse w WHERE w.archivedAt IS NULL");
+    if (location != null && !location.isBlank()) {
+      jpql.append(" AND w.location = :location");
+    }
+    if (minCapacity != null) {
+      jpql.append(" AND w.capacity >= :minCapacity");
+    }
+    if (maxCapacity != null) {
+      jpql.append(" AND w.capacity <= :maxCapacity");
+    }
+    String col = "capacity".equals(sortBy) ? "w.capacity" : "w.createdAt";
+    String ord = "desc".equalsIgnoreCase(sortOrder) ? "DESC" : "ASC";
+    jpql.append(" ORDER BY ").append(col).append(" ").append(ord);
 
-    return dbWarehouse != null ? dbWarehouse.toWarehouse() : null;
+    var query = getEntityManager().createQuery(jpql.toString(), DbWarehouse.class);
+    if (location != null && !location.isBlank()) {
+      query.setParameter("location", location);
+    }
+    if (minCapacity != null) {
+      query.setParameter("minCapacity", minCapacity);
+    }
+    if (maxCapacity != null) {
+      query.setParameter("maxCapacity", maxCapacity);
+    }
+    int safeSize = Math.min(Math.max(pageSize, 1), 100);
+    int safePage = Math.max(page, 0);
+    query.setFirstResult(safePage * safeSize);
+    query.setMaxResults(safeSize);
+    return query.getResultList().stream().map(DbWarehouse::toWarehouse).toList();
+  }
+
+  @Override
+  public long countSearch(String location, Integer minCapacity, Integer maxCapacity) {
+    StringBuilder jpql = new StringBuilder(
+        "SELECT COUNT(w) FROM DbWarehouse w WHERE w.archivedAt IS NULL");
+    if (location != null && !location.isBlank()) {
+      jpql.append(" AND w.location = :location");
+    }
+    if (minCapacity != null) {
+      jpql.append(" AND w.capacity >= :minCapacity");
+    }
+    if (maxCapacity != null) {
+      jpql.append(" AND w.capacity <= :maxCapacity");
+    }
+    var query = getEntityManager().createQuery(jpql.toString(), Long.class);
+    if (location != null && !location.isBlank()) {
+      query.setParameter("location", location);
+    }
+    if (minCapacity != null) {
+      query.setParameter("minCapacity", minCapacity);
+    }
+    if (maxCapacity != null) {
+      query.setParameter("maxCapacity", maxCapacity);
+    }
+    return query.getSingleResult();
   }
 }

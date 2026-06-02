@@ -6,11 +6,13 @@ import com.fulfilment.application.monolith.warehouses.domain.ports.CreateWarehou
 import com.fulfilment.application.monolith.warehouses.domain.ports.ReplaceWarehouseOperation;
 import com.warehouse.api.WarehouseResource;
 import com.warehouse.api.beans.Warehouse;
+import com.warehouse.api.beans.WarehouseSearchResult;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.WebApplicationException;
+import java.math.BigInteger;
 import java.util.List;
 
 @RequestScoped
@@ -33,7 +35,6 @@ public class WarehouseResourceImpl implements WarehouseResource {
   @Override
   @Transactional
   public Warehouse createANewWarehouseUnit(@NotNull Warehouse data) {
-    // Convert API model to domain model
     var domainWarehouse = new com.fulfilment.application.monolith.warehouses.domain.models.Warehouse();
     domainWarehouse.businessUnitCode = data.getBusinessUnitCode();
     domainWarehouse.location = data.getLocation();
@@ -41,10 +42,7 @@ public class WarehouseResourceImpl implements WarehouseResource {
     domainWarehouse.stock = data.getStock() != null ? data.getStock() : 0;
 
     try {
-      // Create warehouse through use case (includes validations)
       createWarehouseOperation.create(domainWarehouse);
-
-      // Return the created warehouse
       return toWarehouseResponse(domainWarehouse);
     } catch (IllegalArgumentException e) {
       throw new WebApplicationException(e.getMessage(), 400);
@@ -53,28 +51,21 @@ public class WarehouseResourceImpl implements WarehouseResource {
 
   @Override
   public Warehouse getAWarehouseUnitByID(String id) {
-    // Find warehouse by business unit code
     var domainWarehouse = warehouseRepository.findByBusinessUnitCode(id);
-
     if (domainWarehouse == null) {
       throw new WebApplicationException("Warehouse with business unit code '" + id + "' not found", 404);
     }
-
     return toWarehouseResponse(domainWarehouse);
   }
 
   @Override
   @Transactional
   public void archiveAWarehouseUnitByID(String id) {
-    // Find warehouse by business unit code
     var domainWarehouse = warehouseRepository.findByBusinessUnitCode(id);
-
     if (domainWarehouse == null) {
       throw new WebApplicationException("Warehouse with business unit code '" + id + "' not found", 404);
     }
-
     try {
-      // Archive warehouse through use case (includes validations)
       archiveWarehouseOperation.archive(domainWarehouse);
     } catch (IllegalArgumentException e) {
       throw new WebApplicationException(e.getMessage(), 400);
@@ -85,23 +76,39 @@ public class WarehouseResourceImpl implements WarehouseResource {
   @Transactional
   public Warehouse replaceTheCurrentActiveWarehouse(
           String businessUnitCode, @NotNull Warehouse data) {
-    // Convert API model to domain model
     var domainWarehouse = new com.fulfilment.application.monolith.warehouses.domain.models.Warehouse();
-    domainWarehouse.businessUnitCode = businessUnitCode; // Use businessUnitCode from path
+    domainWarehouse.businessUnitCode = businessUnitCode;
     domainWarehouse.location = data.getLocation();
     domainWarehouse.capacity = data.getCapacity();
     domainWarehouse.stock = data.getStock() != null ? data.getStock() : 0;
 
     try {
-      // Replace warehouse through use case (includes validations)
       replaceWarehouseOperation.replace(domainWarehouse);
-
-      // Return the updated warehouse
       var updated = warehouseRepository.findByBusinessUnitCode(businessUnitCode);
       return toWarehouseResponse(updated);
     } catch (IllegalArgumentException e) {
       throw new WebApplicationException(e.getMessage(), 400);
     }
+  }
+
+  @Override
+  public WarehouseSearchResult searchWarehouses(String location, BigInteger minCapacity,
+      BigInteger maxCapacity, String sortBy, String sortOrder, BigInteger page, BigInteger pageSize) {
+
+    Integer min = minCapacity != null ? minCapacity.intValue() : null;
+    Integer max = maxCapacity != null ? maxCapacity.intValue() : null;
+    int pg = page.intValue();
+    int size = pageSize.intValue();
+
+    var items = warehouseRepository.search(location, min, max, sortBy, sortOrder, pg, size);
+    long total = warehouseRepository.countSearch(location, min, max);
+
+    var result = new WarehouseSearchResult();
+    result.setItems(items.stream().map(this::toWarehouseResponse).toList());
+    result.setTotal(total);
+    result.setPage(pg);
+    result.setPageSize(size);
+    return result;
   }
 
   private Warehouse toWarehouseResponse(
@@ -111,20 +118,6 @@ public class WarehouseResourceImpl implements WarehouseResource {
     response.setLocation(warehouse.location);
     response.setCapacity(warehouse.capacity);
     response.setStock(warehouse.stock);
-
     return response;
   }
-
-  @Transactional
-  public com.fulfilment.application.monolith.warehouses.domain.models.Warehouse searchWareHouse(String type, String descritption) {
-    var domainWarehouse = warehouseRepository.searchWareHouse(type, descritption);
-
-    if (domainWarehouse == null) {
-      throw new WebApplicationException("Warehouse with business type and description '" + type + "' +'\" + description + \"' not found", 404);
-    }
-
-    return domainWarehouse;
-
-  }
 }
-
