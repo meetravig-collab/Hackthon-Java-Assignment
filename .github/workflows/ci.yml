@@ -25,8 +25,11 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Make Maven wrapper executable
+        run: chmod +x ./mvnw
+
       - name: Build and run tests with coverage
-        run: ./mvnw clean test
+        run: ./mvnw clean test -B
 
       - name: Upload JaCoCo coverage report
         uses: actions/upload-artifact@v4

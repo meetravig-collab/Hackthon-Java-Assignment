@@ -130,6 +130,8 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire-plugin.version}</version>
                 <configuration>
+                    <!-- --enable-preview required at runtime because compiler compiles with it -->
+                    <argLine>--enable-preview</argLine>
                     <includes>
                         <include>**/*Test.java</include>
                         <include>**/*Tests.java</include>
