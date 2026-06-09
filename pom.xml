@@ -118,11 +118,14 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${compiler-plugin.version}</version>
                 <configuration>
-                    <source>21</source>
-                    <target>21</target>
+                    <!-- Single source of truth for the Java version: maven.compiler.release (17).
+                         Using release (not source/target) compiles cleanly on JDK 17 and 21.
+                         The preview-features compiler flag was removed: no preview language
+                         features are used, and it made the build invalid on JDK 21 (the
+                         preview flag requires the release to equal the running JDK version). -->
+                    <release>${maven.compiler.release}</release>
                     <!-- the parameters=true option is critical so that RESTEasy works fine -->
                     <parameters>true</parameters>
-                    <compilerArgs>--enable-preview</compilerArgs>
                 </configuration>
             </plugin>
             <plugin>

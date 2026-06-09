@@ -5,9 +5,12 @@ import com.fulfilment.application.monolith.warehouses.domain.ports.LocationResol
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.ArrayList;
 import java.util.List;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class LocationGateway implements LocationResolver {
+
+  private static final Logger LOG = Logger.getLogger(LocationGateway.class);
 
   private static final List<Location> locations = new ArrayList<>();
 
@@ -26,9 +29,13 @@ public class LocationGateway implements LocationResolver {
   public Location resolveByIdentifier(String identifier) {
     // Simple repository pattern: search through the predefined locations
     // Returns the location if found, or null if not found
-    return locations.stream()
+    LOG.debugf("Resolving location by identifier '%s'", identifier);
+    Location resolved = locations.stream()
         .filter(location -> location.identifier().equals(identifier))
         .findFirst()
         .orElse(null);
+    LOG.debugf("Location lookup for '%s' resolved to: %s", identifier,
+        resolved != null ? resolved.identifier() : "NOT FOUND");
+    return resolved;
   }
 }
