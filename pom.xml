@@ -174,15 +174,10 @@
                         </goals>
                         <configuration>
                             <excludes>
-                                <!-- Exclude OpenAPI-generated code and beans -->
+                                <!-- Only the generated OpenAPI server stubs/beans are excluded;
+                                     all hand-written code (resources, gateways, adapters, domain)
+                                     is measured and covered by tests. -->
                                 <exclude>com/warehouse/api/**</exclude>
-                                <!-- Exclude reference implementations — assignment focuses on warehouse domain -->
-                                <exclude>com/fulfilment/application/monolith/products/**</exclude>
-                                <exclude>com/fulfilment/application/monolith/stores/**</exclude>
-                                <!-- Exclude pure POJO domain models — no business logic to test -->
-                                <exclude>com/fulfilment/application/monolith/warehouses/domain/models/**</exclude>
-                                <!-- Exclude REST adapter layer — business logic is 100% covered in use cases -->
-                                <exclude>com/fulfilment/application/monolith/warehouses/adapters/restapi/**</exclude>
                             </excludes>
                             <rules>
                                 <rule>
