@@ -138,11 +138,10 @@
                         <include>**/*Tests.java</include>
                         <include>**/*IT.java</include>
                     </includes>
-                    <!-- WarehouseEndpointIT uses @QuarkusIntegrationTest (requires packaged app) -->
-                    <!-- WarehouseConcurrencyIT has pre-existing transaction-context issues in concurrent threads -->
+                    <!-- WarehouseEndpointIT uses @QuarkusIntegrationTest (runs against a packaged
+                         app in the integration-test phase, not the unit-test phase). -->
                     <excludes>
                         <exclude>**/restapi/WarehouseEndpointIT.java</exclude>
-                        <exclude>**/adapters/WarehouseConcurrencyIT.java</exclude>
                     </excludes>
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>

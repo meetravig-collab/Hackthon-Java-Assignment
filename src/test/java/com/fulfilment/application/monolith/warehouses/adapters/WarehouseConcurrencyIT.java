@@ -139,9 +139,13 @@ public class WarehouseConcurrencyIT {
 
   /**
    * Test concurrent reads don't block each other (read scalability).
+   *
+   * NOTE: this method must NOT be @Transactional. The warehouse has to be committed before the
+   * reader threads run — each reader uses its own transaction and, under READ COMMITTED, cannot
+   * see a row still held uncommitted by this thread's transaction. The create commits because the
+   * repository operations are now transactional in their own right.
    */
   @Test
-  @Transactional
   public void testConcurrentReadsAreNonBlocking() throws InterruptedException {
     // Create a warehouse first
     Warehouse warehouse = new Warehouse();

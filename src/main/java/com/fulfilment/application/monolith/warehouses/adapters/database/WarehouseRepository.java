@@ -4,6 +4,7 @@ import com.fulfilment.application.monolith.warehouses.domain.models.Warehouse;
 import com.fulfilment.application.monolith.warehouses.domain.ports.WarehouseStore;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.transaction.Transactional;
 import java.util.List;
 import org.jboss.logging.Logger;
 
@@ -21,6 +22,7 @@ public class WarehouseRepository implements WarehouseStore, PanacheRepository<Db
   }
 
   @Override
+  @Transactional
   public void create(Warehouse warehouse) {
     LOG.infof("Creating warehouse with businessUnitCode='%s', location='%s', capacity=%d",
         warehouse.businessUnitCode, warehouse.location, warehouse.capacity);
@@ -37,6 +39,7 @@ public class WarehouseRepository implements WarehouseStore, PanacheRepository<Db
   }
 
   @Override
+  @Transactional
   public void update(Warehouse warehouse) {
     LOG.infof("Updating warehouse '%s'", warehouse.businessUnitCode);
     DbWarehouse dbWarehouse = find("businessUnitCode", warehouse.businessUnitCode).firstResult();
@@ -53,6 +56,7 @@ public class WarehouseRepository implements WarehouseStore, PanacheRepository<Db
   }
 
   @Override
+  @Transactional
   public void remove(Warehouse warehouse) {
     LOG.infof("Removing warehouse '%s'", warehouse.businessUnitCode);
     DbWarehouse dbWarehouse = find("businessUnitCode", warehouse.businessUnitCode).firstResult();
@@ -65,6 +69,7 @@ public class WarehouseRepository implements WarehouseStore, PanacheRepository<Db
   }
 
   @Override
+  @Transactional
   public Warehouse findByBusinessUnitCode(String buCode) {
     LOG.debugf("Looking up warehouse by businessUnitCode='%s'", buCode);
     DbWarehouse dbWarehouse = find("businessUnitCode", buCode).firstResult();

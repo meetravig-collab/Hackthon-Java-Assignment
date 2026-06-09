@@ -11,7 +11,11 @@ import java.time.LocalDateTime;
 public class DbWarehouse {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  // Use the warehouse_seq sequence the schema/import.sql is built around (it seeds ids 1-3 and
+  // does ALTER SEQUENCE warehouse_seq RESTART WITH 4). IDENTITY ignored that sequence, so generated
+  // ids restarted at 1 and collided with the seeded rows; allocationSize=1 keeps ids contiguous.
+  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "warehouseSeqGen")
+  @SequenceGenerator(name = "warehouseSeqGen", sequenceName = "warehouse_seq", allocationSize = 1)
   public Long id;
   
   @Version
