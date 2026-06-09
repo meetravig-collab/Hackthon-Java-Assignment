@@ -14,6 +14,23 @@ jobs:
     name: Build, Test & Coverage
     runs-on: ubuntu-latest
 
+    # PostgreSQL for the @QuarkusIntegrationTest (WarehouseEndpointIT), which launches the packaged
+    # app in prod mode — its datasource points at localhost:15432 (see %prod in application.properties).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: quarkus_test
+          POSTGRES_PASSWORD: quarkus_test
+          POSTGRES_DB: quarkus_test
+        ports:
+          - 15432:5432
+        options: >-
+          --health-cmd "pg_isready -U quarkus_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout source code
         uses: actions/checkout@v6
@@ -28,8 +45,8 @@ jobs:
       - name: Make Maven wrapper executable
         run: chmod +x ./mvnw
 
-      - name: Build and run tests with coverage
-        run: ./mvnw clean test -B
+      - name: Build, run tests + integration tests, with coverage
+        run: ./mvnw clean verify -B
 
       - name: Upload JaCoCo coverage report
         uses: actions/upload-artifact@v7
@@ -43,6 +60,8 @@ jobs:
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: surefire-test-results
-          path: target/surefire-reports/
+          name: test-results
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
           retention-days: 30

@@ -151,6 +151,30 @@
                 </configuration>
             </plugin>
             <plugin>
+                <!-- Runs the @QuarkusIntegrationTest (WarehouseEndpointIT) against the packaged
+                     application during the integration-test phase (mvn verify). Restricted to that
+                     one class so the @QuarkusTest *IT classes keep running under surefire only. -->
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${surefire-plugin.version}</version>
+                <configuration>
+                    <includes>
+                        <include>**/restapi/WarehouseEndpointIT.java</include>
+                    </includes>
+                    <systemPropertyVariables>
+                        <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+                        <maven.home>${maven.home}</maven.home>
+                    </systemPropertyVariables>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.12</version>
